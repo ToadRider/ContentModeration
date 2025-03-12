@@ -1,17 +1,18 @@
 # Content Moderation API
 
-A Flask application that uses OpenAI's Moderation API to analyze text for potentially harmful content.
+A Flask application that uses OpenAI's Moderation API to analyze text for potentially harmful content. Supports both Azure OpenAI and regular OpenAI services.
 
 ## Features
 
 - Clean, responsive web interface for submitting text
 - Real-time analysis using OpenAI's Moderation API
+- Support for both Azure OpenAI and regular OpenAI services
 - Detailed breakdown of content categories and confidence scores
 
 ## Prerequisites
 
 - Python 3.9+
-- OpenAI API key
+- OpenAI API key (for regular OpenAI) or Azure OpenAI credentials
 - Docker (optional, for containerized deployment)
 
 ## Setup and Installation
@@ -38,9 +39,19 @@ A Flask application that uses OpenAI's Moderation API to analyze text for potent
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file in the root directory with your OpenAI API key:
+4. Create a `.env` file in the root directory:
+
+   For regular OpenAI:
    ```
    OPENAI_API_KEY=your_api_key_here
+   ```
+
+   For Azure OpenAI:
+   ```
+   USE_AZURE_OPENAI=true
+   AZURE_OPENAI_API_KEY=your_azure_api_key_here
+   AZURE_OPENAI_API_VERSION=2024-02-15-preview
+   AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com
    ```
 
 5. Run the application:
@@ -57,10 +68,7 @@ A Flask application that uses OpenAI's Moderation API to analyze text for potent
 
 1. Make sure Docker and Docker Compose are installed on your system.
 
-2. Create a `.env` file in the root directory with your OpenAI API key:
-   ```
-   OPENAI_API_KEY=your_api_key_here
-   ```
+2. Create a `.env` file in the root directory with your API credentials (see above for both OpenAI and Azure OpenAI options).
 
 3. Build and start the container:
    ```bash
