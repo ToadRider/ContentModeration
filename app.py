@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI
 from dotenv import load_dotenv
 import os
 
@@ -8,8 +8,17 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Initialize OpenAI client using environment variable
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+# Determine which OpenAI client to use based on environment variable
+use_azure = os.getenv('USE_AZURE_OPENAI', 'false').lower() == 'true'
+
+if use_azure:
+    client = AzureOpenAI(
+        api_key=os.getenv('AZURE_OPENAI_API_KEY'),
+        api_version=os.getenv('AZURE_OPENAI_API_VERSION'),
+        azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT')
+    )
+else:
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 @app.route('/')
 def home():
