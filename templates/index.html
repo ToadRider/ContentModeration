@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Moderation Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .score-bar {
+            height: 4px;
+            background-color: #e9ecef;
+            margin-top: 5px;
+        }
+        .score-fill {
+            height: 100%;
+            background-color: #0d6efd;
+            transition: width 0.3s ease;
+        }
+        .card {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .results-card {
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+        }
+        .input-card {
+            height: fit-content;
+        }
+        .history-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .history-item:hover {
+            background-color: #f8f9fa;
+        }
+        .history-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+        }
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Content Moderation Analyzer</h1>
+        
+        <div class="row">
+            <!-- Left Column - Input Form and History -->
+            <div class="col-lg-6 mb-4 mb-lg-0 left-column">
+                <div class="card input-card">
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="textInput" class="form-label">Enter text to analyze:</label>
+                            <textarea class="form-control mb-3" id="textInput" rows="6" placeholder="Type or paste text here..."></textarea>
+                            <button class="btn btn-primary w-100" onclick="analyzeText()">Analyze</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- History Section -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Analysis History</h5>
+                        <button class="btn btn-sm btn-outline-danger" onclick="clearHistory()">Clear History</button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="historyList" class="list-group list-group-flush">
+                            <!-- History items will be added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Results -->
+            <div class="col-lg-6">
+                <div id="results" class="card results-card d-none">
+                    <div class="card-body">
+                        <h5 class="card-title">Analysis Results</h5>
+                        <div class="alert d-none mb-3" id="flagAlert" role="alert"></div>
+                        
+                        <div class="small text-muted mb-3">
+                            <span id="modelInfo"></span>
+                        </div>
+                        
+                        <div id="scoresList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load history from localStorage
+        let analysisHistory = JSON.parse(localStorage.getItem('analysisHistory') || '[]');
+        
+        // Update history display
+        function updateHistoryDisplay() {
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            analysisHistory.slice().reverse().forEach((item, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'list-group-item history-item';
+                historyItem.onclick = () => loadHistoryItem(analysisHistory.length - 1 - index);
+                
+                const timestamp = new Date(item.timestamp).toLocaleString();
+                const flagIcon = item.flagged ? '⚠️' : '✅';
+                
+                historyItem.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="history-text">${flagIcon} ${item.text}</div>
+                            <small class="text-muted">${timestamp}</small>
+                        </div>
+                    </div>
+                `;
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // Load a history item
+        function loadHistoryItem(index) {
+            const item = analysisHistory[index];
+            document.getElementById('textInput').value = item.text;
+            
+            const resultsDiv = document.getElementById('results');
+            const flagAlert = document.getElementById('flagAlert');
+            const modelInfo = document.getElementById('modelInfo');
+            const scoresList = document.getElementById('scoresList');
+            
+            resultsDiv.classList.remove('d-none');
+            
+            flagAlert.classList.remove('d-none', 'alert-danger', 'alert-success');
+            flagAlert.classList.add(item.flagged ? 'alert-danger' : 'alert-success');
+            flagAlert.textContent = item.flagged ? 
+                '⚠️ Content flagged as potentially inappropriate' : 
+                '✅ Content appears to be safe';
+            
+            modelInfo.textContent = `Model: ${item.model} | ID: ${item.id}`;
+            
+            scoresList.innerHTML = '';
+            Object.entries(item.scores).forEach(([category, score]) => {
+                const scoreValue = score === "N/A" ? 0 : parseFloat(score === "≈ 0" ? "0" : score);
+                const width = score === "N/A" ? 0 : Math.min(scoreValue * 100, 100);
+                
+                const scoreHtml = `
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>${category}</span>
+                            <span class="text-muted">${score}</span>
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-fill" style="width: ${width}%"></div>
+                        </div>
+                    </div>
+                `;
+                scoresList.innerHTML += scoreHtml;
+            });
+        }
+        
+        // Clear history
+        function clearHistory() {
+            if (confirm('Are you sure you want to clear all analysis history?')) {
+                analysisHistory = [];
+                localStorage.setItem('analysisHistory', JSON.stringify(analysisHistory));
+                updateHistoryDisplay();
+            }
+        }
+
+        async function analyzeText() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) return;
+
+            const resultsDiv = document.getElementById('results');
+            const flagAlert = document.getElementById('flagAlert');
+            const modelInfo = document.getElementById('modelInfo');
+            const scoresList = document.getElementById('scoresList');
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultsDiv.classList.remove('d-none');
+                    
+                    // Set flag status
+                    flagAlert.classList.remove('d-none', 'alert-danger', 'alert-success');
+                    flagAlert.classList.add(data.flagged ? 'alert-danger' : 'alert-success');
+                    flagAlert.textContent = data.flagged ? 
+                        '⚠️ Content flagged as potentially inappropriate' : 
+                        '✅ Content appears to be safe';
+
+                    // Set model info
+                    modelInfo.textContent = `Model: ${data.model} | ID: ${data.id}`;
+
+                    // Clear and populate scores
+                    scoresList.innerHTML = '';
+                    Object.entries(data.scores).forEach(([category, score]) => {
+                        const scoreValue = score === "N/A" ? 0 : parseFloat(score === "≈ 0" ? "0" : score);
+                        const width = score === "N/A" ? 0 : Math.min(scoreValue * 100, 100);
+                        
+                        const scoreHtml = `
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <span>${category}</span>
+                                    <span class="text-muted">${score}</span>
+                                </div>
+                                <div class="score-bar">
+                                    <div class="score-fill" style="width: ${width}%"></div>
+                                </div>
+                            </div>
+                        `;
+                        scoresList.innerHTML += scoreHtml;
+                    });
+                    
+                    // Save to history
+                    const historyItem = {
+                        text,
+                        flagged: data.flagged,
+                        model: data.model,
+                        id: data.id,
+                        scores: data.scores,
+                        timestamp: new Date().toISOString()
+                    };
+                    analysisHistory.push(historyItem);
+                    localStorage.setItem('analysisHistory', JSON.stringify(analysisHistory));
+                    updateHistoryDisplay();
+                    
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                resultsDiv.classList.remove('d-none');
+                flagAlert.classList.remove('d-none');
+                flagAlert.classList.add('alert-danger');
+                flagAlert.textContent = `Error: ${error.message}`;
+                scoresList.innerHTML = '';
+            }
+        }
+        
+        // Initialize history display
+        updateHistoryDisplay();
+    </script>
+</body>
+</html> 

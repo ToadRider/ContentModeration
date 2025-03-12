@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  content-moderator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: unless-stopped
+    volumes:
+      - ../app.py:/app/app.py
+      - ../templates:/app/templates
+    env_file:
+      - ../.env 
